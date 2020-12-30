@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  flathunter:
+    build: .
+    depends_on:
+      - windscribe
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+  windscribe:
+    #image: "concisions/windscribe-socks-server:latest"
+    build: windscribe_proxy
+    # restart if stopped (see https://docs.docker.com/config/containers/start-containers-automatically/#use-a-restart-policy)
+    restart: always
+    # Windscribe utilizes iptables and requires additional permissions (see https://stackoverflow.com/a/44523905)
+    # However, there are security ramifications to this (see CAP_NET_ADMIN at http://man7.org/linux/man-pages/man7/capabilities.7.html)
+    cap_add:
+      - NET_ADMIN
+    # publicly expose SOCKS5 server
+    expose:
+      - 1080
+      - 22
+    # mount temporary container storage (see https://docs.docker.com/storage/tmpfs/)
+    tmpfs:
+      - /etc/windscribe:exec
+    # specify configuration through environment variables
+    secrets:
+      - windscribe_server
+secrets:
+  windscribe_server:
+    file: secrets.env
