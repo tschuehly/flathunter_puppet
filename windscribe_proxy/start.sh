@@ -1,4 +1,5 @@
-#!/bin/sh
 echo "Starting SSH Server"
-service ssh start
+/etc/init.d/ssh restart
+echo "SSH Status"
+/etc/init.d/ssh status
 exec /home/wss/docker-entrypoint.sh "$@"
