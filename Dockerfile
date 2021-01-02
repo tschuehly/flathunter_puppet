@@ -6,4 +6,5 @@ RUN npm i
 
 COPY dist/flathunter.js /flathunter/
 COPY immo.db /flathunter/
+RUN mkdir /flathunter/err/
 CMD ["npm","run","docker-start"]

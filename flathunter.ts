@@ -8,10 +8,12 @@ import {launch} from "puppeteer";
 
 const {NodeSSH} = require('node-ssh')
 
-const token = '695605161:AAH3xZLT4u97ONTqQU2yk7ELv-kBK_grby4'
+const token = '1444754795:AAG0s6uGdjHzhI8KFnuQ9kfun-ys_6J9dqI'
+const CHAT_ID = 787255477
+
 const bot = new Telegrambot(token,{polling: true})
 puppeteer.use(StealthPlugin())
-
+const SEARCH_URL = 'https://www.immobilienscout24.de/Suche/shape/wohnung-kaufen?shape=cX1pZEhvem9wQG58Sn19Qn59RWRtQWZwSHhSdnlGeWhEfnVGY35AbnpFZWBKcn5Bd3RMdHZAc3dJdWJAaX1Ic2xAb2xAfmZCY2NKaWBIdWtQbHFBbXhDbHRDc2RScnhEc3FOZGdBd2NHfmBCY2VGfHxAbW9Efl1hYEQ-bW1XbW1Ab2JIeXdAd2dEdH1Qd29We2lZbHlDfW1JaWxSeWBCY3xGaXRDb3lIY2hAYXJCbU51Rj9pTm1Oa05vdkFjfEZjbEFhckJ5YUFhaUN7ZUJ3Z0Q-aU5xZENtZkVlYkVjd0RzfEB1XWdjRHd5QmV2QXVdZ2dRc0Znc0trZUBzYkQ-X2pGX1Z1emtAP3lba2RCZXFAc3BCZ3FAY3pCaWFCc31FekJlWWJVZ2xIP3drZkBrRnN8RHdNcXFEbUZfcENxXG13SGNVaWZEeU1rZkR9Y0BrZkRxXHN8RHtjQHV8RGlrQG9xRHFceWdFdXJAe2dFaWtAb3FEZ2tAZXtDaWtAe2RDb1x3eUJpa0BhbUFvXGNtQXtjQH1hQXtjQHl2QGdrQHd2QHNyQHl2QHVjQ3tkQ3VoQXNrQHNjQ3FuQn15QHNrQHt5QG9gQHFyQG1gQHNoQWVKdXRTP19iSW5gQGt_QWhVX21CaFVpfkFya0BnfkF8YUF9dkF8YUF7dkFmeEF7YEFsY0J9YEFmeEFxeUBmeEF5dkFucURxY0BibUFzTWpjQnNNaHhBP2JrXmZcfGZMZlxsaE18VGZ4QXRDZmZBY1dvRXN6Qj95YUM-eWFDP3NkQmBKY3ZBZFV7bkFmYEB5bkFudkBpYEFsdkBfeUBuYUFfeUBudkB3cUBybEFnY0B0d0FvakB2d0FnY0B0d0FnY0B6bUJfXHZ3QXVUeGJCZ0Z4YkJvTXZiQm9NfG1Cb01_eEJvTXZiQmVGfG1Cb014YkJnRnptQj96bUI-YmRDP2BkQz98eEI-YmRDP3x4Qj9iZEM-em1CP354Qj96bUI-em1CP3hiQj9ybEE-dndBZkZ0d0FuTXZ3QWpBYkthX0BkXmldYHZBfXtCdnpFY3RBbG9EYXlBbH1FYXFAbG9EYWxFdHllQF9Odn5EP2p2Vn5IampCfnpAeGNHfmFAYHJCYG1CYmVGYGpBbHRGZmJFeG9bZmFDZnRMcHRGdGBVZmVBbHhDZGVBampCbmFDYHJCbmZDdmJCamdIYHdEYGhFYGRBcmRHdHRAdHNKP3xwRm1hQ3J5RGFyQmx7RmthQ3ZhVGZjWHhjQn1UbGBDZ0NsZURsSWJ0Q2NlQnl8QGFpR2huQ21IZWFFbWxbaF9CanNBfGBBdHlCYHJDZHhJbGRCdnBDZWNAZHJVbHdGaHhBfnpJa1h_ckhiZEJ2dEhjdkB_dUhyb0Rod0Zhd0BiZkV9ZkJqZUZseEJqbEpmfUVucE14aUs.&price=-120000.0&sorting=2'
 const PROXY_IP = 'windscribe'; //windscribe for docker localhosyt for local
 const PROXY_PORT = 1080;
 const PROXY_PROTOCOL = 'socks5'
@@ -123,7 +125,7 @@ async function launchPuppeteer() {
                 await page.setUserAgent(userAgent.toString());
                 await page.goto('https://api.ipify.org/?format=json');
                 getIp(await page.content());
-                await page.goto('https://www.immobilienscout24.de/Suche/radius/wohnung-kaufen?centerofsearchaddress=Stuttgart;;;;;&price=-120000.0&geocoordinates=48.77899;9.17686;50.0&sorting=2')
+                await page.goto(SEARCH_URL);
                 do {
                     count++;
                     console.log(count + ' try');
@@ -152,7 +154,7 @@ async function launchPuppeteer() {
                                 newListing = true;
                                 db.insert({link: href})
                                 console.log('Found new listing');
-                                bot.sendMessage(787255477, 'Found new listing: ' + href.toString());
+                                bot.sendMessage(CHAT_ID, 'Found new listing: ' + href.toString());
                             }
                         });
                     })
