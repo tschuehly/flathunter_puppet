@@ -7,19 +7,20 @@ import ProxyVerifier from 'proxy-verifier'
 import {launch} from "puppeteer";
 
 const {NodeSSH} = require('node-ssh')
-
-const token = '1444754795:AAG0s6uGdjHzhI8KFnuQ9kfun-ys_6J9dqI'
-const CHAT_ID = 787255477
+//const token = '1106147520:AAF4PCICQqnXoq2hcNucxXnVuETSiE62AH8' // flathunter_toni
+const token = '695605161:AAH3xZLT4u97ONTqQU2yk7ELv-kBK_grby4' // thomas_flathunterbot
+//const CHAT_ID = 1378462150 //Toni
+const CHAT_ID = 787255477 // Thomas
 
 const bot = new Telegrambot(token,{polling: true})
 puppeteer.use(StealthPlugin())
-const SEARCH_URL = 'https://www.immobilienscout24.de/Suche/shape/wohnung-kaufen?shape=cX1pZEhvem9wQG58Sn19Qn59RWRtQWZwSHhSdnlGeWhEfnVGY35AbnpFZWBKcn5Bd3RMdHZAc3dJdWJAaX1Ic2xAb2xAfmZCY2NKaWBIdWtQbHFBbXhDbHRDc2RScnhEc3FOZGdBd2NHfmBCY2VGfHxAbW9Efl1hYEQ-bW1XbW1Ab2JIeXdAd2dEdH1Qd29We2lZbHlDfW1JaWxSeWBCY3xGaXRDb3lIY2hAYXJCbU51Rj9pTm1Oa05vdkFjfEZjbEFhckJ5YUFhaUN7ZUJ3Z0Q-aU5xZENtZkVlYkVjd0RzfEB1XWdjRHd5QmV2QXVdZ2dRc0Znc0trZUBzYkQ-X2pGX1Z1emtAP3lba2RCZXFAc3BCZ3FAY3pCaWFCc31FekJlWWJVZ2xIP3drZkBrRnN8RHdNcXFEbUZfcENxXG13SGNVaWZEeU1rZkR9Y0BrZkRxXHN8RHtjQHV8RGlrQG9xRHFceWdFdXJAe2dFaWtAb3FEZ2tAZXtDaWtAe2RDb1x3eUJpa0BhbUFvXGNtQXtjQH1hQXtjQHl2QGdrQHd2QHNyQHl2QHVjQ3tkQ3VoQXNrQHNjQ3FuQn15QHNrQHt5QG9gQHFyQG1gQHNoQWVKdXRTP19iSW5gQGt_QWhVX21CaFVpfkFya0BnfkF8YUF9dkF8YUF7dkFmeEF7YEFsY0J9YEFmeEFxeUBmeEF5dkFucURxY0BibUFzTWpjQnNNaHhBP2JrXmZcfGZMZlxsaE18VGZ4QXRDZmZBY1dvRXN6Qj95YUM-eWFDP3NkQmBKY3ZBZFV7bkFmYEB5bkFudkBpYEFsdkBfeUBuYUFfeUBudkB3cUBybEFnY0B0d0FvakB2d0FnY0B0d0FnY0B6bUJfXHZ3QXVUeGJCZ0Z4YkJvTXZiQm9NfG1Cb01_eEJvTXZiQmVGfG1Cb014YkJnRnptQj96bUI-YmRDP2BkQz98eEI-YmRDP3x4Qj9iZEM-em1CP354Qj96bUI-em1CP3hiQj9ybEE-dndBZkZ0d0FuTXZ3QWpBYkthX0BkXmldYHZBfXtCdnpFY3RBbG9EYXlBbH1FYXFAbG9EYWxFdHllQF9Odn5EP2p2Vn5IampCfnpAeGNHfmFAYHJCYG1CYmVGYGpBbHRGZmJFeG9bZmFDZnRMcHRGdGBVZmVBbHhDZGVBampCbmFDYHJCbmZDdmJCamdIYHdEYGhFYGRBcmRHdHRAdHNKP3xwRm1hQ3J5RGFyQmx7RmthQ3ZhVGZjWHhjQn1UbGBDZ0NsZURsSWJ0Q2NlQnl8QGFpR2huQ21IZWFFbWxbaF9CanNBfGBBdHlCYHJDZHhJbGRCdnBDZWNAZHJVbHdGaHhBfnpJa1h_ckhiZEJ2dEhjdkB_dUhyb0Rod0Zhd0BiZkV9ZkJqZUZseEJqbEpmfUVucE14aUs.&price=-120000.0&sorting=2'
-const PROXY_IP = 'windscribe'; //windscribe for docker localhosyt for local
+const SEARCH_URL = 'https://www.immobilienscout24.de/Suche/shape/wohnung-kaufen?shape=c3BiZUhrd2hxQHBiaUBtZEVuZlJfZkJseVtrYG5CcH5Nd3l_QG9te0Jva3lBcXZ8QGN5b0BfZW1Ad3NpQGFlYUByYXtAYWdoQHxoeUJ_e1dudWFCYHtPcHNfQXBlcEB2X0NkfV9AfmVC&price=-120000.0&sorting=2'
+const PROXY_IP = 'localhost'; //windscribe for docker localhost for local
 const PROXY_PORT = 1080;
 const PROXY_PROTOCOL = 'socks5'
-const HEADLESS_MODE = true;
+const HEADLESS_MODE = false;
 const POLLING_RATE = 50 // in seconds
-const REPEAT_BEFORE_VPN_RECONNECT = [20,15,23,26,12,18,19];
+const REPEAT_BEFORE_VPN_RECONNECT = [9,12,11,10,15,13];
 const proxy = {
     ipAddress: PROXY_IP,
     port: PROXY_PORT,
@@ -28,7 +29,7 @@ const proxy = {
 
 const proxyString = '--proxy-server=' + proxy.protocol + '://' + proxy.ipAddress + ':' + proxy.port;
 
-const db = new Datastore({filename: './immo.db', autoload: true});
+const db = new Datastore({filename: './data/immo.db', autoload: true});
 const userAgent = new UserAgent()
 const ssh = new NodeSSH();
 
@@ -105,6 +106,13 @@ function testSSH() {
         return ssh;
     });
 }
+class SearchResult{
+    title: string;
+    url: string;
+    price: string;
+    squareMeter: string;
+    roomNumber: string;
+}
 
 async function launchPuppeteer() {
     await testSSH();
@@ -120,17 +128,18 @@ async function launchPuppeteer() {
                 console.log('Running ..');
                 const page = await browser.newPage();
                 page.setDefaultTimeout(60000);
-                let userAgentString = await browser.userAgent();
-                console.log(userAgentString);
+                let reconnect: number = Math.floor(Math.random() * Math.floor(6));
+                let userAgentString = await userAgent().toString();
                 await page.setUserAgent(userAgent.toString());
-                await page.goto('https://api.ipify.org/?format=json');
-                getIp(await page.content());
+                //await page.goto('https://api.ipify.org/?format=json');
+                //getIp(await page.content());
                 await page.goto(SEARCH_URL);
                 do {
                     count++;
                     console.log(count + ' try');
                     let datetime = getDatetime()
-                    const selector = '.result-list-entry__data > a';
+                    const selector = '.result-list-entry__data';
+                    const premSelector = 'a[href^=\"/expose\"].slick-slide.slick-current.slick-active';
                     try {
                         await page.waitForSelector(selector);
                     } catch (err) {
@@ -139,14 +148,38 @@ async function launchPuppeteer() {
                         await page.setViewport({width: 800, height: 1300})
                         let pathString: string = './err/err_immoscout_' + datetime + '.png';
                         await page.screenshot({path: pathString});
-                        userAgentString = await userAgent().toString();
-                        await page.setUserAgent(userAgentString);
-                        console.log('New User Agent: ' + userAgentString);
                         bot.sendMessage(787255477, 'Error occured');
                         bot.sendPhoto(787255477, pathString);
-                        continue;
+                        console.log('Switching VPN Server');
+                        await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
+                            .then(function (result) {
+                                console.log(result.stdout);
+                                if (result.stdout.includes('Connected to')) {
+                                    console.log('Windscribe reconnected and SSH is working');
+                                }
+                            });
+                        console.log('Closing Browser');
+                        await page.close();
+                        await browser.close();
+                        launchPuppeteer();
+                        return;
                     }
                     let links = await page.$$eval(selector, (anchors) => anchors.map((link) => (link as HTMLLinkElement).href));
+                    let listings = await page.$$eval(selector,(elements) => {
+                        elements.map((el) => {
+                            el.outerHTML
+                        })
+                    });
+                    console.log(listings);
+                    
+                    try{
+                        await page.waitForSelector(premSelector,{timeout:2000})
+                        let premiumLinks = await page.$$eval(premSelector,(elements) => elements.map((link) => (link as HTMLLinkElement).href));
+                        console.log(premiumLinks);
+                    }catch (error) {
+                        console.log("No premium Item")
+                    }
+
                     let newListing = false;
                     links.forEach(href => {
                         db.findOne({link: href}, function (err, doc) {
@@ -159,16 +192,14 @@ async function launchPuppeteer() {
                         });
                     })
                     if (!newListing) {
-                        console.log('No new listing found');
+                        console.log('No new listing');
                     }
 
 
                     let timeout: number = (Math.floor(Math.random() * 10) + POLLING_RATE) * 1000;
                     console.log('Wait for ' + timeout + ' ms');
                     await page.waitForTimeout(timeout)
-                    userAgentString = await userAgent().toString();
-                    await page.setUserAgent(userAgentString);
-                    let reconnect: number = Math.floor(Math.random() * Math.floor(7));
+
                     if (count % REPEAT_BEFORE_VPN_RECONNECT[reconnect] == 0) {
                         console.log('Switching VPN Server');
                         await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
@@ -192,14 +223,15 @@ async function launchPuppeteer() {
 
             } catch (e) {
                 console.log(e);
+                bot.sendMessage(787255477, 'Error occured');
+                console.log('Closing Browser');
+                await browser.close();
+                launchPuppeteer();
+                return;
             } finally {
                 await browser.close
             }
         })
-}
-
-async function switchVPNServer() {
-
 }
 
 

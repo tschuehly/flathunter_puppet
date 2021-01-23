@@ -3,7 +3,7 @@
 .idea
 err
 img
-immo.db
+data/immo.db
 
 # Logs
 logs

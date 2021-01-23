@@ -6,7 +6,7 @@ services:
     depends_on:
       - windscribe
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - ./data:/flathunter/data
   windscribe:
     #image: "concisions/windscribe-socks-server:latest"
     build: windscribe_proxy
