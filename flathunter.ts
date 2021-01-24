@@ -1,24 +1,24 @@
 import Telegrambot from "node-telegram-bot-api";
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import Datastore from "nedb";
+import NeDB from "nedb";
 import UserAgent from 'user-agents';
 import ProxyVerifier from 'proxy-verifier'
 import {launch} from "puppeteer";
 
 const {NodeSSH} = require('node-ssh')
-//const token = '1106147520:AAF4PCICQqnXoq2hcNucxXnVuETSiE62AH8' // flathunter_toni
-const token = '695605161:AAH3xZLT4u97ONTqQU2yk7ELv-kBK_grby4' // thomas_flathunterbot
-//const CHAT_ID = 1378462150 //Toni
-const CHAT_ID = 787255477 // Thomas
+const token = '1106147520:AAF4PCICQqnXoq2hcNucxXnVuETSiE62AH8' // flathunter_toni
+//const token = '695605161:AAH3xZLT4u97ONTqQU2yk7ELv-kBK_grby4' // thomas_flathunterbot
+const CHAT_ID = 1378462150 //Toni
+//const CHAT_ID = 787255477 // Thomas
 
 const bot = new Telegrambot(token,{polling: true})
 puppeteer.use(StealthPlugin())
 const SEARCH_URL = 'https://www.immobilienscout24.de/Suche/shape/wohnung-kaufen?shape=c3BiZUhrd2hxQHBiaUBtZEVuZlJfZkJseVtrYG5CcH5Nd3l_QG9te0Jva3lBcXZ8QGN5b0BfZW1Ad3NpQGFlYUByYXtAYWdoQHxoeUJ_e1dudWFCYHtPcHNfQXBlcEB2X0NkfV9AfmVC&price=-120000.0&sorting=2'
-const PROXY_IP = 'localhost'; //windscribe for docker localhost for local
+const PROXY_IP = 'windscribe'; //windscribe for docker localhost for local
 const PROXY_PORT = 1080;
 const PROXY_PROTOCOL = 'socks5'
-const HEADLESS_MODE = false;
+const HEADLESS_MODE = true;
 const POLLING_RATE = 50 // in seconds
 const REPEAT_BEFORE_VPN_RECONNECT = [9,12,11,10,15,13];
 const proxy = {
@@ -29,7 +29,8 @@ const proxy = {
 
 const proxyString = '--proxy-server=' + proxy.protocol + '://' + proxy.ipAddress + ':' + proxy.port;
 
-const db = new Datastore({filename: './data/immo.db', autoload: true});
+let DB = new NeDB({filename: './data/immo.db', autoload: true});
+DB.loadDatabase();
 const userAgent = new UserAgent()
 const ssh = new NodeSSH();
 
@@ -112,6 +113,7 @@ class SearchResult{
     price: string;
     squareMeter: string;
     roomNumber: string;
+    location: string;
 }
 
 async function launchPuppeteer() {
@@ -131,8 +133,6 @@ async function launchPuppeteer() {
                 let reconnect: number = Math.floor(Math.random() * Math.floor(6));
                 let userAgentString = await userAgent().toString();
                 await page.setUserAgent(userAgent.toString());
-                //await page.goto('https://api.ipify.org/?format=json');
-                //getIp(await page.content());
                 await page.goto(SEARCH_URL);
                 do {
                     count++;
@@ -164,35 +164,41 @@ async function launchPuppeteer() {
                         launchPuppeteer();
                         return;
                     }
-                    let links = await page.$$eval(selector, (anchors) => anchors.map((link) => (link as HTMLLinkElement).href));
-                    let listings = await page.$$eval(selector,(elements) => {
-                        elements.map((el) => {
-                            el.outerHTML
-                        })
-                    });
-                    console.log(listings);
-                    
-                    try{
-                        await page.waitForSelector(premSelector,{timeout:2000})
-                        let premiumLinks = await page.$$eval(premSelector,(elements) => elements.map((link) => (link as HTMLLinkElement).href));
-                        console.log(premiumLinks);
-                    }catch (error) {
-                        console.log("No premium Item")
-                    }
-
+                    let listings : SearchResult[] = await page.$$eval("div .result-list-entry__data",
+                        elements => elements.map(
+                            (el) => {
+                                let result = {} as SearchResult
+                                result.url = el.getElementsByTagName("a")[0].href
+                                result.title = el.getElementsByTagName("h5")[0].textContent;
+                                if(result.title.startsWith("NEU")){
+                                    result.title = result.title.replace("NEU","")
+                                }
+                                result.location = el.getElementsByClassName("result-list-entry__address")[0].textContent;
+                                let data = el.getElementsByClassName("grid grid-flex gutter-horizontal-l gutter-vertical-s")[0].childNodes
+                                result.price = data.item(0).textContent.replace('Kaufpreis',' Kaufpreis')
+                                result.squareMeter = data.item(1).textContent.replace('Wohnfläche',' Wohnfläche')
+                                result.roomNumber = (data.item(2) as HTMLElement).getElementsByClassName("onlySmall")[0].textContent
+                                return result;
+                            })
+                    );
                     let newListing = false;
-                    links.forEach(href => {
-                        db.findOne({link: href}, function (err, doc) {
+                    let newListingCount = 0;
+                    listings.forEach(listing => {
+                        DB.findOne(listing, function (err, doc) {
                             if (!doc) {
                                 newListing = true;
-                                db.insert({link: href})
-                                console.log('Found new listing');
-                                bot.sendMessage(CHAT_ID, 'Found new listing: ' + href.toString());
+                                DB.insert(listing);
+                                newListingCount++;
+                                let listingMsg = listing.title + '\n' +listing.roomNumber + '\n' +listing.squareMeter + '\n' +listing.price + '\n' +listing.url + '\n' +listing.location + '\n';
+                                bot.sendMessage(CHAT_ID, listingMsg);
                             }
-                        });
-                    })
+                        })
+
+                    });
                     if (!newListing) {
                         console.log('No new listing');
+                    }else {
+                        console.log('Found '+newListingCount+' new Listings')
                     }
 
 
