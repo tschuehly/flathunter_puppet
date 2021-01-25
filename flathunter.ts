@@ -4,30 +4,22 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import NeDB from "nedb";
 import UserAgent from 'user-agents';
 import ProxyVerifier from 'proxy-verifier'
-import {launch} from "puppeteer";
-
+import ConfigModule from "config";
 const {NodeSSH} = require('node-ssh')
-const token = '1106147520:AAF4PCICQqnXoq2hcNucxXnVuETSiE62AH8' // flathunter_toni
+
+const config = ConfigModule.get('flathunter')
+
+//const token = '1498643306:AAE1ucuBsgdFyBMwrYrUpdEkSbp9halqxmc' // flathunter_1
 //const token = '695605161:AAH3xZLT4u97ONTqQU2yk7ELv-kBK_grby4' // thomas_flathunterbot
-const CHAT_ID = 1378462150 //Toni
-//const CHAT_ID = 787255477 // Thomas
+//config.CHAT_ID = 1378462150 //Toni
+//config.CHAT_ID = 787255477 // Thomas
 
-const bot = new Telegrambot(token,{polling: true})
+const bot = new Telegrambot(config.TELEGRAM_TOKEN,{polling: true})
 puppeteer.use(StealthPlugin())
-const SEARCH_URL = 'https://www.immobilienscout24.de/Suche/shape/wohnung-kaufen?shape=c3BiZUhrd2hxQHBiaUBtZEVuZlJfZkJseVtrYG5CcH5Nd3l_QG9te0Jva3lBcXZ8QGN5b0BfZW1Ad3NpQGFlYUByYXtAYWdoQHxoeUJ_e1dudWFCYHtPcHNfQXBlcEB2X0NkfV9AfmVC&price=-120000.0&sorting=2'
-const PROXY_IP = 'windscribe'; //windscribe for docker localhost for local
-const PROXY_PORT = 1080;
-const PROXY_PROTOCOL = 'socks5'
-const HEADLESS_MODE = true;
-const POLLING_RATE = 50 // in seconds
-const REPEAT_BEFORE_VPN_RECONNECT = [9,12,11,10,15,13];
-const proxy = {
-    ipAddress: PROXY_IP,
-    port: PROXY_PORT,
-    protocol: PROXY_PROTOCOL
-};
 
-const proxyString = '--proxy-server=' + proxy.protocol + '://' + proxy.ipAddress + ':' + proxy.port;
+const REPEAT_BEFORE_VPN_RECONNECT = [9,12,11,10,15,13];
+
+const proxyString = '--proxy-server=' + config.proxy.protocol + '://' + config.proxy.ipAddress + ':' + config.proxy.port;
 
 let DB = new NeDB({filename: './data/immo.db', autoload: true});
 DB.loadDatabase();
@@ -44,7 +36,7 @@ function testProxy(callback) {
         throw "Could not connect to proxy";
     }
     retries = retries - 1;
-    ProxyVerifier.testAll(proxy, {}, async function (error, result) {
+    ProxyVerifier.testAll(config.proxy, {}, async function (error, result) {
         if (error) {
             // Some unusual error occurred.
         } else {
@@ -77,17 +69,11 @@ function getDatetime() {
     return datetime;
 }
 
-function getIp(body) {
-    let splittedBody = body.split('{')
-    splittedBody = splittedBody[1].split('}')
-    console.log(splittedBody[0]);
-}
-
 let count = 0;
 
 function testSSH() {
     ssh.connect({
-        host: PROXY_IP,
+        host: config.get('proxy.ipAddress'),
         port: 22,
         username: 'flathunter',
         password: '36jqU7w8AWejGcGyQKvYXxyU1cNpIB9QCSstR2XIPKiU5txSTwWnkYMQ'
@@ -119,7 +105,7 @@ class SearchResult{
 async function launchPuppeteer() {
     await testSSH();
     puppeteer.launch({
-        headless: HEADLESS_MODE,
+        headless: config.HEADLESS_MODE,
         args: ['--no-sandbox',
             proxyString
         ],
@@ -131,15 +117,13 @@ async function launchPuppeteer() {
                 const page = await browser.newPage();
                 page.setDefaultTimeout(60000);
                 let reconnect: number = Math.floor(Math.random() * Math.floor(6));
-                let userAgentString = await userAgent().toString();
                 await page.setUserAgent(userAgent.toString());
-                await page.goto(SEARCH_URL);
+                await page.goto(config.SEARCH_URL);
                 do {
                     count++;
                     console.log(count + ' try');
                     let datetime = getDatetime()
                     const selector = '.result-list-entry__data';
-                    const premSelector = 'a[href^=\"/expose\"].slick-slide.slick-current.slick-active';
                     try {
                         await page.waitForSelector(selector);
                     } catch (err) {
@@ -148,8 +132,8 @@ async function launchPuppeteer() {
                         await page.setViewport({width: 800, height: 1300})
                         let pathString: string = './err/err_immoscout_' + datetime + '.png';
                         await page.screenshot({path: pathString});
-                        bot.sendMessage(787255477, 'Error occured');
-                        bot.sendPhoto(787255477, pathString);
+                        bot.sendMessage(config.ERROR_CHAT_ID, 'Error occured');
+                        bot.sendPhoto(config.ERROR_CHAT_ID, pathString);
                         console.log('Switching VPN Server');
                         await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
                             .then(function (result) {
@@ -190,7 +174,7 @@ async function launchPuppeteer() {
                                 DB.insert(listing);
                                 newListingCount++;
                                 let listingMsg = listing.title + '\n' +listing.roomNumber + '\n' +listing.squareMeter + '\n' +listing.price + '\n' +listing.url + '\n' +listing.location + '\n';
-                                bot.sendMessage(CHAT_ID, listingMsg);
+                                bot.sendMessage(config.CHAT_ID, listingMsg);
                             }
                         })
 
@@ -202,7 +186,7 @@ async function launchPuppeteer() {
                     }
 
 
-                    let timeout: number = (Math.floor(Math.random() * 10) + POLLING_RATE) * 1000;
+                    let timeout: number = (Math.floor(Math.random() * 10) + config.POLLING_RATE) * 1000;
                     console.log('Wait for ' + timeout + ' ms');
                     await page.waitForTimeout(timeout)
 
