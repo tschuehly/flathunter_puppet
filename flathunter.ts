@@ -7,12 +7,7 @@ import ProxyVerifier from 'proxy-verifier'
 import ConfigModule from "config";
 const {NodeSSH} = require('node-ssh')
 
-const config = ConfigModule.get('flathunter')
-
-//const token = '1498643306:AAE1ucuBsgdFyBMwrYrUpdEkSbp9halqxmc' // flathunter_1
-//const token = '695605161:AAH3xZLT4u97ONTqQU2yk7ELv-kBK_grby4' // thomas_flathunterbot
-//config.CHAT_ID = 1378462150 //Toni
-//config.CHAT_ID = 787255477 // Thomas
+const config = ConfigModule.get("flathunter")
 
 const bot = new Telegrambot(config.TELEGRAM_TOKEN,{polling: true})
 puppeteer.use(StealthPlugin())
@@ -132,7 +127,7 @@ async function launchPuppeteer() {
                         await page.setViewport({width: 800, height: 1300})
                         let pathString: string = './err/err_immoscout_' + datetime + '.png';
                         await page.screenshot({path: pathString});
-                        bot.sendMessage(config.ERROR_CHAT_ID, 'Error occured');
+                        bot.sendMessage(config.ERROR_CHAT_ID, 'IP was blacklisted');
                         bot.sendPhoto(config.ERROR_CHAT_ID, pathString);
                         console.log('Switching VPN Server');
                         await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
