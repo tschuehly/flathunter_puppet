@@ -5,14 +5,14 @@ import NeDB from "nedb";
 import UserAgent from 'user-agents';
 import ProxyVerifier from 'proxy-verifier'
 import ConfigModule from "config";
+
 const {NodeSSH} = require('node-ssh')
 
 const config = ConfigModule.get("flathunter")
-
-const bot = new Telegrambot(config.TELEGRAM_TOKEN,{polling: true})
+const immoScoutLinks: string[] = config.SEARCH_URL_ARRAY
+const bot = new Telegrambot(config.TELEGRAM_TOKEN, {polling: true})
 puppeteer.use(StealthPlugin())
-
-const REPEAT_BEFORE_VPN_RECONNECT = [9,12,11,10,15,13];
+const REPEAT_BEFORE_VPN_RECONNECT = [9, 12, 11, 10, 15, 13];
 
 const proxyString = '--proxy-server=' + config.proxy.protocol + '://' + config.proxy.ipAddress + ':' + config.proxy.port;
 
@@ -82,13 +82,15 @@ function testSSH() {
                     if (result.stdout.includes('CONNECTED')) {
                         console.log('Windscribe connected and SSH is working');
                     }
+                    return ssh;
                 }
 
             });
-        return ssh;
+
     });
 }
-class SearchResult{
+
+class SearchResult {
     title: string;
     url: string;
     price: string;
@@ -113,73 +115,82 @@ async function launchPuppeteer() {
                 page.setDefaultTimeout(60000);
                 let reconnect: number = Math.floor(Math.random() * Math.floor(6));
                 await page.setUserAgent(userAgent.toString());
-                await page.goto(config.SEARCH_URL);
+
+
                 do {
                     count++;
                     console.log(count + ' try');
-                    let datetime = getDatetime()
-                    const selector = '.result-list-entry__data';
-                    try {
-                        await page.waitForSelector(selector);
-                    } catch (err) {
-                        console.log('Error occured');
-                        console.log(err)
-                        await page.setViewport({width: 800, height: 1300})
-                        let pathString: string = './err/err_immoscout_' + datetime + '.png';
-                        await page.screenshot({path: pathString});
-                        bot.sendMessage(config.ERROR_CHAT_ID, 'IP was blacklisted');
-                        bot.sendPhoto(config.ERROR_CHAT_ID, pathString);
-                        console.log('Switching VPN Server');
-                        await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
-                            .then(function (result) {
-                                console.log(result.stdout);
-                                if (result.stdout.includes('Connected to')) {
-                                    console.log('Windscribe reconnected and SSH is working');
+                    for (let link of immoScoutLinks) {
+                        await page.goto(link);
+                        let datetime = getDatetime()
+                        const selector = '.result-list-entry__data';
+                        try {
+                            await page.waitForSelector(selector);
+                        } catch (err) {
+                            console.log('Error occured');
+                            console.log(err)
+                            await page.setViewport({width: 800, height: 1300})
+                            let pathString: string = './err/err_immoscout_' + datetime + '.png';
+                            await page.screenshot({path: pathString});
+                            bot.sendMessage(config.ERROR_CHAT_ID, 'IP was blacklisted');
+                            bot.sendPhoto(config.ERROR_CHAT_ID, pathString);
+                            console.log('Switching VPN Server');
+                            await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
+                                .then(function (result) {
+                                    console.log(result.stdout);
+                                    if (result.stdout.includes('Connected to')) {
+                                        console.log('Windscribe reconnected and SSH is working');
+                                    }
+                                });
+                            console.log('Closing Browser');
+                            await page.close();
+                            await browser.close();
+                            launchPuppeteer();
+                            return;
+                        }
+                        let listings: SearchResult[] = await page.$$eval("div .result-list-entry__data",
+                            elements => elements.filter(function (el) {
+                                return el.getElementsByTagName("a").length !== 0
+                            }).map(
+                                (el) => {
+                                    let result = {} as SearchResult
+                                    result.url = el.getElementsByTagName("a")[0].href
+                                    result.title = el.getElementsByTagName("h5")[0].textContent;
+                                    if (result.title.startsWith("NEU")) {
+                                        result.title = result.title.replace("NEU", "")
+                                    }
+                                    result.location = el.getElementsByClassName("result-list-entry__address")[0].textContent;
+                                    let data = el.getElementsByClassName("grid grid-flex gutter-horizontal-l gutter-vertical-s")[0].childNodes
+                                    result.price = data.item(0).textContent.replace('Kaufpreis', ' Kaufpreis')
+                                    result.squareMeter = data.item(1).textContent.replace('Wohnfläche', ' Wohnfläche')
+                                    result.roomNumber = (data.item(2) as HTMLElement).getElementsByClassName("onlySmall")[0].textContent
+                                    return result;
+                                })
+                        );
+
+                        let newListing = false;
+                        let newListingCount = 0;
+                        listings.forEach(listing => {
+                            DB.findOne(listing, function (err, doc) {
+                                if (!doc) {
+                                    newListing = true;
+                                    console.log("Found new Listing")
+                                    DB.insert(listing);
+                                    newListingCount++;
+                                    let listingMsg = listing.title + '\n' + listing.roomNumber + '\n' + listing.squareMeter + '\n' + listing.price + '\n' + listing.url + '\n' + listing.location + '\n';
+                                    bot.sendMessage(config.CHAT_ID, listingMsg);
                                 }
-                            });
-                        console.log('Closing Browser');
-                        await page.close();
-                        await browser.close();
-                        launchPuppeteer();
-                        return;
-                    }
-                    let listings : SearchResult[] = await page.$$eval("div .result-list-entry__data",
-                        elements => elements.map(
-                            (el) => {
-                                let result = {} as SearchResult
-                                result.url = el.getElementsByTagName("a")[0].href
-                                result.title = el.getElementsByTagName("h5")[0].textContent;
-                                if(result.title.startsWith("NEU")){
-                                    result.title = result.title.replace("NEU","")
-                                }
-                                result.location = el.getElementsByClassName("result-list-entry__address")[0].textContent;
-                                let data = el.getElementsByClassName("grid grid-flex gutter-horizontal-l gutter-vertical-s")[0].childNodes
-                                result.price = data.item(0).textContent.replace('Kaufpreis',' Kaufpreis')
-                                result.squareMeter = data.item(1).textContent.replace('Wohnfläche',' Wohnfläche')
-                                result.roomNumber = (data.item(2) as HTMLElement).getElementsByClassName("onlySmall")[0].textContent
-                                return result;
                             })
-                    );
-                    let newListing = false;
-                    let newListingCount = 0;
-                    listings.forEach(listing => {
-                        DB.findOne(listing, function (err, doc) {
-                            if (!doc) {
-                                newListing = true;
-                                DB.insert(listing);
-                                newListingCount++;
-                                let listingMsg = listing.title + '\n' +listing.roomNumber + '\n' +listing.squareMeter + '\n' +listing.price + '\n' +listing.url + '\n' +listing.location + '\n';
-                                bot.sendMessage(config.CHAT_ID, listingMsg);
-                            }
-                        })
 
-                    });
-                    if (!newListing) {
-                        console.log('No new listing');
-                    }else {
-                        console.log('Found '+newListingCount+' new Listings')
+                        });
+                        if (!newListing) {
+                            console.log('No new listing');
+                        } else {
+                            console.log('Found ' + newListingCount + ' new Listings')
+                        }
+
+                        await page.waitForTimeout(2000)
                     }
-
 
                     let timeout: number = (Math.floor(Math.random() * 10) + config.POLLING_RATE) * 1000;
                     console.log('Wait for ' + timeout + ' ms');
@@ -199,9 +210,6 @@ async function launchPuppeteer() {
                         await browser.close();
                         launchPuppeteer();
                         return;
-                    } else {
-                        await page.reload()
-                        console.log('page refreshed');
                     }
 
                 } while (1)
