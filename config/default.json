@@ -1,10 +1,13 @@
 {
   "flathunter": {
-    "TELEGRAM_TOKEN": "1498643306:AAE1ucuBsgdFyBMwrYrUpdEkSbp9halqxmc",
+    "TELEGRAM_TOKEN": "695605161:AAH3xZLT4u97ONTqQU2yk7ELv-kBK_grby4",
     "CHAT_ID": 787255477,
     "ERROR_CHAT_ID": 787255477,
-    "SEARCH_URL": "https://www.immobilienscout24.de/Suche/shape/wohnung-kaufen?shape=c3BiZUhrd2hxQHBiaUBtZEVuZlJfZkJseVtrYG5CcH5Nd3l_QG9te0Jva3lBcXZ8QGN5b0BfZW1Ad3NpQGFlYUByYXtAYWdoQHxoeUJ_e1dudWFCYHtPcHNfQXBlcEB2X0NkfV9AfmVC&price=-120000.0&sorting=2",
-    "HEADLESS_MODE": false,
+    "SEARCH_URL_ARRAY": [
+      "https://www.immobilienscout24.de/Suche/shape/haus-kaufen?shape=X3FrZkhzdn5fQWJgVGN3QmxiSHdtSXRjRm9uTXpVbW1qQHtkTnd0TGltTXVjQXdhSHl7RGVkRGVQfV9KdF9Oe2dOaGBdcW9HfmVCX3pSdWNBbWVIbH1BX3REYmxMfWBAamdVZG5BbH1BZmdJfGlAdGBBY2ZDYmpXdGdAbHlZaW9GO2FqdmxIdWhpYkF8fUFxdUVfYkFrdkl5eUI-c3BCdmpIYGtCfm9GO2F_fGxIc2FxYkFuQmdIb0J7Rg..&sorting=2",
+"https://www.immobilienscout24.de/Suche/shape/wohnung-kaufen?shape=X3FrZkhzdn5fQWJgVGN3QmxiSHdtSXRjRm9uTXpVbW1qQHtkTnd0TGltTXVjQXdhSHl7RGVkRGVQfV9KdF9Oe2dOaGBdcW9HfmVCX3pSdWNBbWVIbH1BX3REYmxMfWBAamdVZG5BbH1BZmdJfGlAdGBBY2ZDYmpXdGdAbHlZaW9GO2FqdmxIdWhpYkF8fUFxdUVfYkFrdkl5eUI-c3BCdmpIYGtCfm9GO2F_fGxIc2FxYkFuQmdIb0J7Rg..&sorting=2"
+    ],
+    "HEADLESS_MODE": true,
     "POLLING_RATE": 50,
     "proxy" : {
       "ipAddress": "localhost",
