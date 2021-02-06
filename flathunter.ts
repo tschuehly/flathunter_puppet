@@ -154,9 +154,11 @@ async function launchPuppeteer() {
                                 }
                                 result.location = el.getElementsByClassName("result-list-entry__address")[0].textContent;
                                 let data = el.getElementsByClassName("grid grid-flex gutter-horizontal-l gutter-vertical-s")[0].childNodes
-                                result.price = data.item(0).textContent.replace('Kaufpreis',' Kaufpreis')
-                                result.squareMeter = data.item(1).textContent.replace('Wohnfläche',' Wohnfläche')
-                                result.roomNumber = (data.item(2) as HTMLElement).getElementsByClassName("onlySmall")[0].textContent
+                                if(data.length == 3){
+                                    result.price = data.item(0).textContent.replace('Kaufpreis',' Kaufpreis')
+                                    result.squareMeter = data.item(1).textContent.replace('Wohnfläche',' Wohnfläche')
+                                    result.roomNumber = (data.item(2) as HTMLElement).getElementsByClassName("onlySmall")[0].textContent
+                                }
                                 return result;
                             })
                     );

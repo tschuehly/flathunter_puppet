@@ -1,13 +1,13 @@
 {
   "flathunter": {
     "TELEGRAM_TOKEN": "1498643306:AAE1ucuBsgdFyBMwrYrUpdEkSbp9halqxmc",
-    "CHAT_ID": 1378462150,
+    "CHAT_ID": 787255477,
     "ERROR_CHAT_ID": 787255477,
     "SEARCH_URL": "https://www.immobilienscout24.de/Suche/shape/wohnung-kaufen?shape=c3BiZUhrd2hxQHBiaUBtZEVuZlJfZkJseVtrYG5CcH5Nd3l_QG9te0Jva3lBcXZ8QGN5b0BfZW1Ad3NpQGFlYUByYXtAYWdoQHxoeUJ_e1dudWFCYHtPcHNfQXBlcEB2X0NkfV9AfmVC&price=-120000.0&sorting=2",
-    "HEADLESS_MODE": true,
+    "HEADLESS_MODE": false,
     "POLLING_RATE": 50,
     "proxy" : {
-      "ipAddress": "windscribe",
+      "ipAddress": "localhost",
       "port": 1080,
       "protocol": "socks5"
     }
