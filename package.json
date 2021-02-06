@@ -10,10 +10,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/nedb": "^1.8.11",
     "@types/node": "^14.14.16",
     "config": "^3.3.3",
     "nedb": "^1.8.0",
+    "nedb-async": "^0.1.6",
     "nedb-promises": "^4.1.1",
     "node-ssh": "^11.1.1",
     "node-telegram-bot-api": "^0.51.0",

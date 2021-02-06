@@ -1,7 +1,7 @@
 import Telegrambot from "node-telegram-bot-api";
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import NeDB from "nedb";
+import AsyncNedb from 'nedb-async'
 import UserAgent from 'user-agents';
 import ProxyVerifier from 'proxy-verifier'
 import ConfigModule from "config";
@@ -16,8 +16,8 @@ const REPEAT_BEFORE_VPN_RECONNECT = [9,12,11,10,15,13];
 
 const proxyString = '--proxy-server=' + config.proxy.protocol + '://' + config.proxy.ipAddress + ':' + config.proxy.port;
 
-let DB = new NeDB({filename: './data/immo.db', autoload: true});
-DB.loadDatabase();
+let DB = new AsyncNedb({filename: './data/immo.db', autoload: true});
+DB.asyncLoadDatabase();
 const userAgent = new UserAgent()
 const ssh = new NodeSSH();
 
@@ -144,7 +144,9 @@ async function launchPuppeteer() {
                         return;
                     }
                     let listings : SearchResult[] = await page.$$eval("div .result-list-entry__data",
-                        elements => elements.map(
+                        elements => elements.filter(function (el) {
+                            return el.getElementsByTagName("a").length !== 0
+                        }).map(
                             (el) => {
                                 let result = {} as SearchResult
                                 result.url = el.getElementsByTagName("a")[0].href
@@ -164,25 +166,22 @@ async function launchPuppeteer() {
                     );
                     let newListing = false;
                     let newListingCount = 0;
-                    listings.forEach(listing => {
-                        DB.findOne(listing, function (err, doc) {
-                            if (!doc) {
+                    for(let listing of listings){
+                        await DB.asyncFindOne(listing).then(async function (doc){
+                            if(!doc){
                                 newListing = true;
-                                DB.insert(listing);
+                                await DB.asyncInsert(listing);
                                 newListingCount++;
                                 let listingMsg = listing.url;
                                 bot.sendMessage(config.CHAT_ID, listingMsg);
                             }
                         })
-
-                    });
+                    }
                     if (!newListing) {
                         console.log('No new listing');
                     }else {
                         console.log('Found '+newListingCount+' new Listings')
                     }
-
-
                     let timeout: number = (Math.floor(Math.random() * 10) + config.POLLING_RATE) * 1000;
                     console.log('Wait for ' + timeout + ' ms');
                     await page.waitForTimeout(timeout)
