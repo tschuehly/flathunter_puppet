@@ -9,7 +9,7 @@
     "HEADLESS_MODE": true,
     "POLLING_RATE": 50,
     "proxy" : {
-      "ipAddress": "localhost",//windscribe for docker localhost for dev
+      "ipAddress": "windscribe",//windscribe for docker localhost for dev
       "port": 1080,
       "protocol": "socks5"
     }
