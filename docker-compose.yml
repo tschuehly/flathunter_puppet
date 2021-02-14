@@ -7,6 +7,7 @@ services:
       - windscribe
     volumes:
       - ./data:/flathunter/data
+    restart: always
   windscribe:
     #image: "concisions/windscribe-socks-server:latest"
     build: windscribe_proxy

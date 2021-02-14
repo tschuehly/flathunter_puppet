@@ -5,7 +5,9 @@ import AsyncNedb from 'nedb-async'
 import UserAgent from 'user-agents';
 import ProxyVerifier from 'proxy-verifier'
 import ConfigModule from "config";
+
 const {NodeSSH} = require('node-ssh')
+const logger = require('simple-node-logger').createSimpleLogger('flathunter.log');
 
 const config = ConfigModule.get("flathunter")
 const immoScoutLinks: string[] = config.SEARCH_URL_ARRAY
@@ -16,36 +18,63 @@ const REPEAT_BEFORE_VPN_RECONNECT = [9, 12, 11, 10, 15, 13];
 const proxyString = '--proxy-server=' + config.proxy.protocol + '://' + config.proxy.ipAddress + ':' + config.proxy.port;
 
 let DB = new AsyncNedb({filename: './data/immo.db', autoload: true});
-DB.asyncLoadDatabase();
+DB.asyncLoadDatabase().then()
 const userAgent = new UserAgent()
 const ssh = new NodeSSH();
 
+launch()
+    .then()
+    .catch(e =>
+        logger.error(e))
 
-let retries = 20;
-testProxy(launchPuppeteer);
-
-function testProxy(callback) {
-    console.log('Testing Proxy, ' + retries + ' retries left');
-    if (retries == 0) {
-        throw "Could not connect to proxy";
+async function launch() {
+    try {
+        let proxyWorks = await testProxy()
+        logger.info(proxyWorks ? 'Proxy is working' : 'Proxy is not working')
+        if (!proxyWorks) throw 'Could not connect to Proxy, exiting the programm'
+        let sshWorks = await testSSH()
+        logger.info(sshWorks ? 'SSH is working' : 'SSH is not working')
+        if (!sshWorks) throw 'Could not connect to SSH, exiting the programm'
+        await launchPuppeteer()
+    } catch (e) {
+        logger.error(e)
+        bot.sendMessage(config.ERROR_CHAT_ID, e);
+        await sleep(5000)
+        process.exit(1)
     }
-    retries = retries - 1;
-    ProxyVerifier.testAll(config.proxy, {}, async function (error, result) {
-        if (error) {
-            // Some unusual error occurred.
-        } else {
-            console.log(result);
-            if (result.tunnel.ok === true) {
-                console.log('Proxy good')
-                callback();
-            } else {
-                await sleep(5000);
-                testProxy(launchPuppeteer);
-            }
-            // The result object will contain success/error information.
-        }
-    });
+
+
 }
+
+
+async function testProxy() {
+    return new Promise(async resolve => {
+        logger.info('Testing Proxy');
+        let proxyGood: boolean = false;
+        for (let retries = 10; retries > 0; retries--) {
+            logger.info(`${retries}. try`)
+            proxyGood = await new Promise(async resolve => {
+                ProxyVerifier.testAll(config.proxy, {}, function (error, result) {
+                    logger.info(result)
+                    if (result.tunnel.ok === true) {
+                        resolve(true)
+                    } else {
+                        resolve(false)
+                    }
+                })
+            })
+            if (proxyGood) {
+                resolve(true)
+                break
+            } else {
+                await sleep(5000)
+            }
+        }
+        resolve(false)
+    })
+
+}
+
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -59,33 +88,48 @@ function getDatetime() {
         + currentdate.getHours() + "-"
         + currentdate.getMinutes() + "-"
         + currentdate.getSeconds();
-    console.log('DateTime: ' + datetime);
+    logger.info('DateTime: ' + datetime);
     return datetime;
 }
 
 let count = 0;
 
-function testSSH() {
-    ssh.connect({
-        host: config.get('proxy.ipAddress'),
-        port: 22,
-        username: 'flathunter',
-        password: '36jqU7w8AWejGcGyQKvYXxyU1cNpIB9QCSstR2XIPKiU5txSTwWnkYMQ'
-    }).then(function () {
-        console.log('Connected to SSH')
-        ssh.execCommand('windscribe status', {cwd: '/home/wss'})
-            .then(function (result) {
+async function testSSH() {
+    return new Promise(async resolve => {
+        logger.info('Testing SSH');
+        let sshGood: boolean = false;
+        for (let retries = 10; retries > 0; retries--) {
+            logger.info(`${retries}. try`)
+            sshGood = await new Promise(async resolve => {
+                await ssh.connect({
+                    host: config.get('proxy.ipAddress'),
+                    port: 22,
+                    username: 'flathunter',
+                    password: '36jqU7w8AWejGcGyQKvYXxyU1cNpIB9QCSstR2XIPKiU5txSTwWnkYMQ'
+                })
+                logger.info('Connected to SSH')
+                let result = await ssh.execCommand('windscribe status', {cwd: '/home/wss'})
                 if (result.stderr) {
-                    console.log('STDERR: ' + result.stderr + ' END OF STDERR')
-                } else {
-                    if (result.stdout.includes('CONNECTED')) {
-                        console.log('Windscribe connected and SSH is working');
+                    logger.info('STDERR: ' + result.stderr + ' END OF STDERR')
+                } else if (result.stdout) {
+                    if (result.stdout.includes('DISCONNECTED')) {
+                        logger.error("VPN Error")
+                        resolve(false)
+                    } else {
+                        logger.info('Windscribe connected and SSH is working');
+                        resolve(true)
                     }
-                    return ssh;
                 }
-
             });
-    });
+            if (sshGood) {
+                resolve(true)
+                break
+            } else {
+                await sleep(5000)
+            }
+        }
+        resolve(false)
+    })
 }
 
 class SearchResult {
@@ -98,24 +142,20 @@ class SearchResult {
 }
 
 async function launchPuppeteer() {
-    await testSSH();
     puppeteer.launch({
         headless: config.HEADLESS_MODE,
-        args: ['--no-sandbox',
-            proxyString
-        ],
-
+        args: ['--no-sandbox', proxyString],
     })
         .then(async browser => {
             try {
-                console.log('Running ..');
+                logger.info('Running ..');
                 const page = await browser.newPage();
                 page.setDefaultTimeout(60000);
                 let reconnect: number = Math.floor(Math.random() * Math.floor(6));
                 await page.setUserAgent(userAgent.toString());
                 do {
                     count++;
-                    console.log(count + ' try');
+                    logger.info(count + ' try');
                     for (let link of immoScoutLinks) {
                         await page.goto(link);
                         let datetime = getDatetime()
@@ -123,25 +163,26 @@ async function launchPuppeteer() {
                         try {
                             await page.waitForSelector(selector);
                         } catch (err) {
-                            console.log('Error occured');
-                            console.log(err)
+                            logger.error('1: ' + err)
                             await page.setViewport({width: 800, height: 1300})
                             let pathString: string = './err/err_immoscout_' + datetime + '.png';
                             await page.screenshot({path: pathString});
                             bot.sendMessage(config.ERROR_CHAT_ID, 'IP was blacklisted');
                             bot.sendPhoto(config.ERROR_CHAT_ID, pathString);
-                            console.log('Switching VPN Server');
+                            logger.info('Switching VPN Server');
                             await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
                                 .then(function (result) {
-                                    console.log(result.stdout);
-                                    if (result.stdout.includes('Connected to')) {
-                                        console.log('Windscribe reconnected and SSH is working');
+                                    logger.info(result.stdout);
+                                    if (result.stdout.includes('DISCONNECTED')) {
+                                        logger.error("VPN Error")
+                                    } else {
+                                        logger.info('Windscribe reconnected and SSH is working');
                                     }
                                 });
-                            console.log('Closing Browser');
+                            logger.info('Closing Browser');
                             await page.close();
                             await browser.close();
-                            launchPuppeteer();
+                            launch();
                             return;
                         }
                         let listings: SearchResult[] = await page.$$eval("div .result-list-entry__data",
@@ -173,51 +214,49 @@ async function launchPuppeteer() {
                                     newListing = true;
                                     await DB.asyncInsert(listing);
                                     newListingCount++;
-                                    let listingMsg = listing.url;
+                                    let listingMsg = listing.title + '\n' + listing.roomNumber + '\n' + listing.squareMeter + '\n' + listing.price + '\n' + listing.url + '\n' + listing.location + '\n';
                                     bot.sendMessage(config.CHAT_ID, listingMsg);
                                 }
                             })
                         }
                         if (!newListing) {
-                            console.log('No new listing');
+                            logger.info('No new listing');
                         } else {
-                            console.log('Found ' + newListingCount + ' new Listings')
+                            logger.info('Found ' + newListingCount + ' new Listings')
                         }
                     }
                     let timeout: number = (Math.floor(Math.random() * 10) + config.POLLING_RATE) * 1000;
-                    console.log('Wait for ' + timeout + ' ms');
+                    logger.info('Wait for ' + timeout + ' ms');
                     await page.waitForTimeout(timeout)
 
                     if (count % REPEAT_BEFORE_VPN_RECONNECT[reconnect] == 0) {
-                        console.log('Switching VPN Server');
+                        logger.info('Switching VPN Server');
                         await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
                             .then(function (result) {
-                                console.log(result.stdout);
+                                logger.info(result.stdout);
                                 if (result.stdout.includes('Connected to')) {
-                                    console.log('Windscribe reconnected and SSH is working');
+                                    logger.info('Windscribe reconnected and SSH is working');
                                 }
                             });
-                        console.log('Closing Browser');
+                        logger.info('Closing Browser');
                         await page.close();
                         await browser.close();
-                        launchPuppeteer();
+                        launch();
                         return;
                     } else {
                         await page.reload()
-                        console.log('page refreshed');
+                        logger.info('page refreshed');
                     }
 
                 } while (1)
 
-            } catch (e) {
-                console.log(e);
-                bot.sendMessage(787255477, 'Error occured');
-                console.log('Closing Browser');
+            } catch (err) {
+                logger.error('2: ' + err);
+                bot.sendMessage(config.ERROR_CHAT_ID, `error: ${err}`);
+                logger.info('Closing Browser');
                 await browser.close();
-                launchPuppeteer();
+                launch();
                 return;
-            } finally {
-                await browser.close
             }
         })
 }
