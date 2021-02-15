@@ -58,10 +58,8 @@ async function testProxy() {
         logger.info('Testing Proxy');
         let proxyGood: boolean = false;
         for (let retries = 1; retries < 10; retries++) {
-            logger.info(`${retries}. try`)
             proxyGood = await new Promise(async resolve => {
                 ProxyVerifier.testAll(config.proxy, {}, function (error, result) {
-                    logger.info(result)
                     if (result.tunnel.ok === true) {
                         resolve(true)
                     } else {
@@ -111,17 +109,15 @@ async function testWindscribe() {
         logger.info('Connected to SSH')
         logger.info('Testing Windscribe')
         for (let retries = 1; retries < 10; retries++) {
-            logger.info(`${retries}. try`)
             windscribeGood = await new Promise(async resolve => {
                 let result = await ssh.execCommand('windscribe status', {cwd: '/home/wss'})
-
                 if(result.stdout.includes('DISCONNECTED')){
                     logger.error("VPN : " + result.stdout)
                     resolve(false)
                 } else if(result.stdout.includes('CONNECTED --')){
-                    logger.info(result)
                     resolve(true)
                 }else{
+                    logger.info(result)
                     resolve(false)
                 }
             });
@@ -153,7 +149,6 @@ async function switchVpnCloseBrowser(browser: Browser){
     logger.info('Switching VPN Server');
     await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
         .then(function (result) {
-            logger.info(result.stdout);
             if (result.stdout.includes('DISCONNECTED')) {
                 logger.error("VPN Error")
             } else {
@@ -228,13 +223,15 @@ async function launchPuppeteer() {
                             newListing = true;
                             await DB.asyncInsert(listing);
                             newListingCount++;
-                            let listingMsg =  `${listing.title}
-                                        ${listing.roomNumber}
-                                        ${listing.squareMeter}
-                                        ${listing.price}
-                                        ${listing.url}
-                                        ${listing.location}`
-                            await bot.sendMessage(config.CHAT_ID, listingMsg);
+                            let {title,roomNumber,squareMeter,price,url,location} = {...listing}
+                            let msg = `${title ? title + "\n" : ""}`+
+                                `${roomNumber ? roomNumber + "\n" : ""}`+
+                                `${squareMeter ? squareMeter + "\n" : ""}`+
+                                `${price ? price + "\n" : ""}`+
+                                `${location ? location + "\n" : ""}`+
+                                `${url ? url + "\n" : ""}`
+                            logger.info(msg)
+                            await bot.sendMessage(config.CHAT_ID, msg);
                         }
                     })
                 }
