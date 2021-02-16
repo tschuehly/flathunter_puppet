@@ -9,11 +9,11 @@ import {Browser, Page} from "puppeteer";
 
 const {NodeSSH} = require('node-ssh')
 const fs = require("fs"); // Or `import fs from "fs";` with ESM
-if (!fs.existsSync('./log')){
+if (!fs.existsSync('./log')) {
     fs.mkdirSync('./log');
 }
 const logger = require('simple-node-logger').createSimpleLogger('./log/log.txt');
-
+//TODO: Rolling Logger?
 const config = ConfigModule.get("flathunter")
 const immoScoutLinks: string[] = config.SEARCH_URL_ARRAY
 const bot = new Telegrambot(config.TELEGRAM_TOKEN, {polling: true})
@@ -34,6 +34,7 @@ launch()
         logger.error(e))
 
 let count = 0;
+
 async function launch() {
     try {
         let windscribeWorks = await testWindscribe()
@@ -97,55 +98,60 @@ function getDatetime() {
 }
 
 async function testWindscribe() {
-    return new Promise(async resolve => {
-        logger.info('Testing SSH');
-        let windscribeGood = false;
-        await ssh.connect({
-            host: config.get('proxy.ipAddress'),
-            port: 22,
-            username: 'flathunter',
-            password: '36jqU7w8AWejGcGyQKvYXxyU1cNpIB9QCSstR2XIPKiU5txSTwWnkYMQ'
-        })
-        logger.info('Connected to SSH')
-        logger.info('Testing Windscribe')
-        for (let retries = 1; retries < 10; retries++) {
-            windscribeGood = await new Promise(async resolve => {
-                let result = await ssh.execCommand('windscribe status', {cwd: '/home/wss'})
-                if(result.stdout.includes('DISCONNECTED')){
-                    logger.error("VPN : " + result.stdout)
-                    resolve(false)
-                } else if(result.stdout.includes('CONNECTED --')){
+    return new Promise(async (resolve) => {
+        try {
+            logger.info('Testing SSH');
+            let windscribeGood = false;
+            for (let retries = 1; retries < 10; retries++) {
+
+                windscribeGood = await new Promise(async resolve => {
+                    try {
+                        await ssh.connect({
+                            host: config.get('proxy.ipAddress'),
+                            port: 22,
+                            username: config.WINDSCRIBE_USERNAME,
+                            password: config.WINDSCRIBE_PW
+                        })
+                        logger.info('Connected to SSH')
+                        logger.info('Testing Windscribe')
+                        let result = await ssh.execCommand('windscribe status', {cwd: '/home/wss'}).catch(reason => resolve(false))
+                        if (result.stdout.includes('DISCONNECTED')) {
+                            logger.error("VPN : " + result.stdout)
+                            resolve(false)
+                        } else if (result.stdout.includes('CONNECTED --')) {
+                            resolve(true)
+                        } else {
+                            logger.info('Windscribe did not start yet')
+                            resolve(false)
+                        }
+                    } catch (e) {
+                        logger.error(e + "")
+                        resolve(false)
+                    }
+                });
+                if (windscribeGood) {
                     resolve(true)
-                }else{
-                    logger.info(result)
-                    resolve(false)
+                    break
+                } else {
+                    logger.info('Sleeping')
+                    await sleep(5000)
                 }
-            });
-            if (windscribeGood) {
-                resolve(true)
-                break
-            } else {
-                logger.info('Sleeping')
-                await sleep(5000)
+                if (retries == 5) {
+                    await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
+                        .catch(e => logger.error("5: "+ e))
+                }
             }
-            if(retries == 5){
-                await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
-            }
+            resolve(false)
+        } catch (e) {
+            resolve(false)
         }
-        resolve(false)
     })
+
 }
 
-interface SearchResult {
-    title: string;
-    url: string;
-    price: string;
-    squareMeter: string;
-    roomNumber: string;
-    location: string;
-}
 
-async function switchVpnCloseBrowser(browser: Browser){
+
+async function switchVpnCloseBrowser(browser: Browser) {
     logger.info('Switching VPN Server');
     await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
         .then(function (result) {
@@ -160,28 +166,29 @@ async function switchVpnCloseBrowser(browser: Browser){
 }
 
 async function extractSearchResults(page: Page): Promise<SearchResult[]> {
-        return await page.$$eval("div .result-list-entry__data",
-                elements => elements.filter(function (el) {
-                    return el.getElementsByTagName("a").length !== 0
-                }).map(
-                    (el) => {
-                        let result = {} as SearchResult
-                        result.url = el.getElementsByTagName("a")[0].href
-                        result.title = el.getElementsByTagName("h5")[0].textContent;
-                        if (result.title.startsWith("NEU")) {
-                            result.title = result.title.replace("NEU", "")
-                        }
-                        result.location = el.getElementsByClassName("result-list-entry__address")[0].textContent;
-                        let data = el.getElementsByClassName("grid grid-flex gutter-horizontal-l gutter-vertical-s")[0].childNodes
-                        if (data.length == 3) {
-                            result.price = data.item(0).textContent.replace('Kaufpreis', ' Kaufpreis')
-                            result.squareMeter = data.item(1).textContent.replace('Wohnfläche', ' Wohnfläche')
-                            result.roomNumber = (data.item(2) as HTMLElement).getElementsByClassName("onlySmall")[0].textContent
-                        }
-                        return result;
-                    })
-            )
+    return await page.$$eval("div .result-list-entry__data",
+        elements => elements.filter(function (el) {
+            return el.getElementsByTagName("a").length !== 0
+        }).map(
+            (el) => {
+                let result = {} as SearchResult
+                result.url = el.getElementsByTagName("a")[0].href
+                result.title = el.getElementsByTagName("h5")[0].textContent;
+                if (result.title.startsWith("NEU")) {
+                    result.title = result.title.replace("NEU", "")
+                }
+                result.location = el.getElementsByClassName("result-list-entry__address")[0].textContent;
+                let data = el.getElementsByClassName("grid grid-flex gutter-horizontal-l gutter-vertical-s")[0].childNodes
+                if (data.length == 3) {
+                    result.price = data.item(0).textContent.replace('Kaufpreis', ' Kaufpreis')
+                    result.squareMeter = data.item(1).textContent.replace('Wohnfläche', ' Wohnfläche')
+                    result.roomNumber = (data.item(2) as HTMLElement).getElementsByClassName("onlySmall")[0].textContent
+                }
+                return result;
+            })
+    )
 }
+
 async function launchPuppeteer() {
     const browser: Browser = await puppeteer.launch({
         headless: config.HEADLESS_MODE,
@@ -218,22 +225,21 @@ async function launchPuppeteer() {
                 let newListing = false;
                 let newListingCount = 0;
                 for (let listing of listings) {
-                    await DB.asyncFindOne(listing).then(async function (doc) {
-                        if (!doc) {
-                            newListing = true;
-                            await DB.asyncInsert(listing);
-                            newListingCount++;
-                            let {title,roomNumber,squareMeter,price,url,location} = {...listing}
-                            let msg = `${title ? title + "\n" : ""}`+
-                                `${roomNumber ? roomNumber + "\n" : ""}`+
-                                `${squareMeter ? squareMeter + "\n" : ""}`+
-                                `${price ? price + "\n" : ""}`+
-                                `${location ? location + "\n" : ""}`+
-                                `${url ? url + "\n" : ""}`
-                            logger.info(msg)
-                            await bot.sendMessage(config.CHAT_ID, msg);
-                        }
-                    })
+                    const doc = await DB.asyncFindOne(listing)
+                    if (!doc) {
+                        newListing = true;
+                        await DB.asyncInsert(listing);
+                        newListingCount++;
+                        let {title, roomNumber, squareMeter, price, url, location} = {...listing}
+                        let msg = `${title ? title + "\n" : ""}` +
+                            `${roomNumber ? roomNumber + "\n" : ""}` +
+                            `${squareMeter ? squareMeter + "\n" : ""}` +
+                            `${price ? price + "\n" : ""}` +
+                            `${location ? location + "\n" : ""}` +
+                            `${url ? url + "\n" : ""}`
+                        logger.info(msg)
+                        await bot.sendMessage(config.CHAT_ID, msg);
+                    }
                 }
                 if (!newListing) {
                     logger.info('No new listing');
@@ -266,5 +272,12 @@ async function launchPuppeteer() {
     }
 }
 
-
+interface SearchResult {
+    title: string;
+    url: string;
+    price: string;
+    squareMeter: string;
+    roomNumber: string;
+    location: string;
+}
 
