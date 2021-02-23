@@ -6,20 +6,25 @@ import UserAgent from 'user-agents';
 import ProxyVerifier from 'proxy-verifier'
 import ConfigModule from "config";
 import {Browser, Page} from "puppeteer";
-
+const fetch = require('node-fetch');
 const {NodeSSH} = require('node-ssh')
+import { timeout, TimeoutError } from 'promise-timeout';
 const fs = require("fs"); // Or `import fs from "fs";` with ESM
 if (!fs.existsSync('./log')) {
     fs.mkdirSync('./log');
 }
-const logger = require('simple-node-logger').createSimpleLogger('./log/log.txt');
+import 'loud-rejection/register';
+const logger = require('simple-node-logger').createSimpleLogger({
+    logFilePath:'./log/log.txt',
+    timestampFormat:'YYYY-MM-DD HH:mm:ss.SSS'
+});
 //TODO: Rolling Logger?
 const config = ConfigModule.get("flathunter")
 const immoScoutLinks: string[] = config.SEARCH_URL_ARRAY
 const bot = new Telegrambot(config.TELEGRAM_TOKEN, {polling: true})
 puppeteer.use(StealthPlugin())
 
-const REPEAT_BEFORE_VPN_RECONNECT = [9, 12, 11, 10, 15, 13];
+const REPEAT_BEFORE_VPN_RECONNECT = [9, 12, 11, 10, 8, 13];
 
 const proxyString = '--proxy-server=' + config.proxy.protocol + '://' + config.proxy.ipAddress + ':' + config.proxy.port;
 
@@ -37,13 +42,15 @@ let count = 0;
 
 async function launch() {
     try {
-        let windscribeWorks = await testWindscribe()
-        logger.info(windscribeWorks ? 'Windscribe is working' : 'Windscribe is not working')
-        if (!windscribeWorks) throw 'Could not connect to Windscribe, exiting the programm'
-        let proxyWorks = await testProxy()
-        logger.info(proxyWorks ? 'Proxy is working' : 'Proxy is not working')
-        if (!proxyWorks) throw 'Could not connect to Proxy, exiting the programm'
-        await launchPuppeteer()
+        while (1) {
+            let windscribeWorks = await testWindscribe()
+            logger.info(windscribeWorks ? 'Windscribe is working' : 'Windscribe is not working')
+            if (!windscribeWorks) throw 'Could not connect to Windscribe, exiting the programm'
+            let proxyWorks = await testProxy()
+            logger.info(proxyWorks ? 'Proxy is working' : 'Proxy is not working')
+            if (!proxyWorks) throw 'Could not connect to Proxy, exiting the programm'
+            await launchPuppeteer()
+        }
     } catch (e) {
         logger.error(e)
         await bot.sendMessage(config.ERROR_CHAT_ID, e);
@@ -59,15 +66,22 @@ async function testProxy() {
         logger.info('Testing Proxy');
         let proxyGood: boolean = false;
         for (let retries = 1; retries < 10; retries++) {
-            proxyGood = await new Promise(async resolve => {
-                ProxyVerifier.testAll(config.proxy, {}, function (error, result) {
-                    if (result.tunnel.ok === true) {
-                        resolve(true)
-                    } else {
-                        resolve(false)
-                    }
-                })
-            })
+            logger.info(retries + '. proxytest');
+            try{
+                proxyGood = await timeout(new Promise(resolve => {
+                    ProxyVerifier.testAll(config.proxy, {}, function (error, result) {
+                        if(result){logger.info(result)}
+                        if(error){logger.error(error)}
+                        if (result.tunnel.ok === true) {
+                            resolve(true)
+                        } else {
+                            resolve(false)
+                        }
+                    })
+                }),3000)
+            }catch (e) {
+                logger.error(e)
+            }
             if (proxyGood) {
                 resolve(true)
                 break
@@ -102,8 +116,8 @@ async function testWindscribe() {
         try {
             logger.info('Testing SSH');
             let windscribeGood = false;
-            for (let retries = 1; retries < 10; retries++) {
-
+            for (let retries = 1; retries < 20; retries++) {
+                logger.info(retries + '. windscribetest');
                 windscribeGood = await new Promise(async resolve => {
                     try {
                         await ssh.connect({
@@ -136,9 +150,9 @@ async function testWindscribe() {
                     logger.info('Sleeping')
                     await sleep(5000)
                 }
-                if (retries == 5) {
+                if (retries == 7 || 13) {
                     await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
-                        .catch(e => logger.error("5: "+ e))
+                        .catch(e => logger.error("7: "+ e))
                 }
             }
             resolve(false)
@@ -166,6 +180,7 @@ async function switchVpnCloseBrowser(browser: Browser) {
 }
 
 async function extractSearchResults(page: Page): Promise<SearchResult[]> {
+    //page.on('console', consoleObj => console.log(consoleObj.text()));
     return await page.$$eval("div .result-list-entry__data",
         elements => elements.filter(function (el) {
             return el.getElementsByTagName("a").length !== 0
@@ -179,10 +194,18 @@ async function extractSearchResults(page: Page): Promise<SearchResult[]> {
                 }
                 result.location = el.getElementsByClassName("result-list-entry__address")[0].textContent;
                 let data = el.getElementsByClassName("grid grid-flex gutter-horizontal-l gutter-vertical-s")[0].childNodes
-                if (data.length == 3) {
-                    result.price = data.item(0).textContent.replace('Kaufpreis', ' Kaufpreis')
-                    result.squareMeter = data.item(1).textContent.replace('Wohnfläche', ' Wohnfläche')
-                    result.roomNumber = (data.item(2) as HTMLElement).getElementsByClassName("onlySmall")[0].textContent
+                for (let item of data.values()){
+                    let itemText = (item as HTMLElement).textContent
+                    console.log() //TODO: differantiate between kauf und miete
+                    if(itemText.includes("Kaufpreis")){
+                        result.price = itemText.replace('Kaufpreis', ' Kaufpreis')
+                    }else if(itemText.includes("Wohnfläche")){
+                        result.squareMeter = itemText.replace('Wohnfläche', ' Wohnfläche')
+                    }else if(itemText.includes("Zi.")){
+                        result.roomNumber = (item as HTMLElement).getElementsByClassName("onlySmall")[0].textContent
+                    }else if(itemText.includes("Grundstück")){
+                        result.squareMeter = itemText.replace('Grundstück', ' Grundstück')
+                    }
                 }
                 return result;
             })
@@ -212,13 +235,8 @@ async function launchPuppeteer() {
                     await page.waitForSelector(selector);
                 } catch (err) {
                     logger.error('1: ' + err)
-                    await page.setViewport({width: 800, height: 1300})
-                    let pathString: string = './err/err_immoscout_' + datetime + '.png';
-                    await page.screenshot({path: pathString});
-                    await bot.sendMessage(config.ERROR_CHAT_ID, 'IP was blacklisted');
-                    await bot.sendPhoto(config.ERROR_CHAT_ID, pathString);
+                    await bot.sendMessage(config.ERROR_CHAT_ID, err);
                     await switchVpnCloseBrowser(browser)
-                    launch()
                     return
                 }
                 let listings: SearchResult[] = await extractSearchResults(page)
@@ -253,13 +271,8 @@ async function launchPuppeteer() {
 
             if (count % REPEAT_BEFORE_VPN_RECONNECT[reconnect] == 0) {
                 await switchVpnCloseBrowser(browser)
-                launch()
                 return
-            } else {
-                await page.reload()
-                logger.info('page refreshed');
             }
-
         } while (1)
 
     } catch (err) {
@@ -267,8 +280,7 @@ async function launchPuppeteer() {
         await bot.sendMessage(config.ERROR_CHAT_ID, `error: ${err}`);
         logger.info('Closing Browser');
         await browser.close();
-        launch();
-        return;
+        return
     }
 }
 
@@ -279,5 +291,6 @@ interface SearchResult {
     squareMeter: string;
     roomNumber: string;
     location: string;
+    plotSize: string;
 }
 
