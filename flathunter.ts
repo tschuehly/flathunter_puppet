@@ -6,17 +6,20 @@ import UserAgent from 'user-agents';
 import ProxyVerifier from 'proxy-verifier'
 import ConfigModule from "config";
 import {Browser, Page} from "puppeteer";
+
 const fetch = require('node-fetch');
 const {NodeSSH} = require('node-ssh')
-import { timeout, TimeoutError } from 'promise-timeout';
+import {timeout, TimeoutError} from 'promise-timeout';
+
 const fs = require("fs"); // Or `import fs from "fs";` with ESM
 if (!fs.existsSync('./log')) {
     fs.mkdirSync('./log');
 }
 import 'loud-rejection/register';
+
 const logger = require('simple-node-logger').createSimpleLogger({
-    logFilePath:'./log/log.txt',
-    timestampFormat:'YYYY-MM-DD HH:mm:ss.SSS'
+    logFilePath: './log/log.txt',
+    timestampFormat: 'YYYY-MM-DD HH:mm:ss.SSS'
 });
 //TODO: Rolling Logger?
 const config = ConfigModule.get("flathunter")
@@ -46,20 +49,47 @@ async function launch() {
             let windscribeWorks = await testWindscribe()
             logger.info(windscribeWorks ? 'Windscribe is working' : 'Windscribe is not working')
             if (!windscribeWorks) throw 'Could not connect to Windscribe, exiting the programm'
-            let proxyWorks = await testProxy()
-            logger.info(proxyWorks ? 'Proxy is working' : 'Proxy is not working')
-            if (!proxyWorks) throw 'Could not connect to Proxy, exiting the programm'
-            await launchPuppeteer()
+            // let proxyWorks = await testProxy()
+            // logger.info(proxyWorks ? 'Proxy is working' : 'Proxy is not working')
+            // if (!proxyWorks) throw 'Could not connect to Proxy, exiting the programm'
+            const browser: Browser = await getBrowser();
+            logger.info(browser ? 'Proxy is working' : 'Proxy is not working')
+            if(!browser) throw 'Could not connect to Proxy, exiting the programm'
+            await launchPuppeteer(browser)
         }
     } catch (e) {
         logger.error(e)
-        await bot.sendMessage(config.ERROR_CHAT_ID, e);
+        await bot.sendMessage(config.ERROR_CHAT_ID, `launcherror: ${e}`);
         process.exit(1)
     }
 
 
 }
 
+async function getBrowser(): Promise<Browser> {
+    return new Promise(async (resolve) => {
+        let browser: Browser
+        for (let retries = 1; retries < 10; retries++) {
+            try {
+                browser = await puppeteer.launch({
+                    headless: config.HEADLESS_MODE,
+                    args: ['--no-sandbox', proxyString],
+                })
+                let page =  await browser.newPage()
+                await page.goto("https://www.immobilienscout24.de/")
+                logger.info("Browser works")
+                resolve(browser)
+                break
+            } catch (e) {
+                await browser.close()
+                logger.error(e)
+
+                await sleep(10000)
+            }
+        }
+        resolve(null)
+    })
+}
 
 async function testProxy() {
     return new Promise(async resolve => {
@@ -67,19 +97,23 @@ async function testProxy() {
         let proxyGood: boolean = false;
         for (let retries = 1; retries < 10; retries++) {
             logger.info(retries + '. proxytest');
-            try{
+            try {
                 proxyGood = await timeout(new Promise(resolve => {
                     ProxyVerifier.testAll(config.proxy, {}, function (error, result) {
-                        if(result){logger.info(result)}
-                        if(error){logger.error(error)}
+                        if (result) {
+                            logger.info(result)
+                        }
+                        if (error) {
+                            logger.error(error)
+                        }
                         if (result.tunnel.ok === true) {
                             resolve(true)
                         } else {
                             resolve(false)
                         }
                     })
-                }),3000)
-            }catch (e) {
+                }), 3000)
+            } catch (e) {
                 logger.error(e)
             }
             if (proxyGood) {
@@ -152,7 +186,7 @@ async function testWindscribe() {
                 }
                 if (retries == 7 || 13) {
                     await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
-                        .catch(e => logger.error("7: "+ e))
+                        .catch(e => logger.error("7: " + e))
                 }
             }
             resolve(false)
@@ -162,7 +196,6 @@ async function testWindscribe() {
     })
 
 }
-
 
 
 async function switchVpnCloseBrowser(browser: Browser) {
@@ -194,16 +227,16 @@ async function extractSearchResults(page: Page): Promise<SearchResult[]> {
                 }
                 result.location = el.getElementsByClassName("result-list-entry__address")[0].textContent;
                 let data = el.getElementsByClassName("grid grid-flex gutter-horizontal-l gutter-vertical-s")[0].childNodes
-                for (let item of data.values()){
+                for (let item of data.values()) {
                     let itemText = (item as HTMLElement).textContent
                     console.log() //TODO: differantiate between kauf und miete
-                    if(itemText.includes("Kaufpreis")){
+                    if (itemText.includes("Kaufpreis")) {
                         result.price = itemText.replace('Kaufpreis', ' Kaufpreis')
-                    }else if(itemText.includes("Wohnfläche")){
+                    } else if (itemText.includes("Wohnfläche")) {
                         result.squareMeter = itemText.replace('Wohnfläche', ' Wohnfläche')
-                    }else if(itemText.includes("Zi.")){
+                    } else if (itemText.includes("Zi.")) {
                         result.roomNumber = (item as HTMLElement).getElementsByClassName("onlySmall")[0].textContent
-                    }else if(itemText.includes("Grundstück")){
+                    } else if (itemText.includes("Grundstück")) {
                         result.squareMeter = itemText.replace('Grundstück', ' Grundstück')
                     }
                 }
@@ -212,11 +245,7 @@ async function extractSearchResults(page: Page): Promise<SearchResult[]> {
     )
 }
 
-async function launchPuppeteer() {
-    const browser: Browser = await puppeteer.launch({
-        headless: config.HEADLESS_MODE,
-        args: ['--no-sandbox', proxyString],
-    })
+async function launchPuppeteer(browser: Browser) {
     try {
         logger.info('Running ..');
         const page = await browser.newPage()
@@ -235,7 +264,6 @@ async function launchPuppeteer() {
                     await page.waitForSelector(selector);
                 } catch (err) {
                     logger.error('1: ' + err)
-                    await bot.sendMessage(config.ERROR_CHAT_ID, err);
                     await switchVpnCloseBrowser(browser)
                     return
                 }
@@ -277,7 +305,6 @@ async function launchPuppeteer() {
 
     } catch (err) {
         logger.error('2: ' + err);
-        await bot.sendMessage(config.ERROR_CHAT_ID, `error: ${err}`);
         logger.info('Closing Browser');
         await browser.close();
         return
