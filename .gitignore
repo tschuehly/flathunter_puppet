@@ -4,6 +4,7 @@
 err
 img
 data/immo.db
+log/log.txt
 
 # Logs
 logs
