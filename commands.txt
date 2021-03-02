@@ -1,0 +1,2 @@
+
+docker inspect 4ce --format "{{json .State.Health}}

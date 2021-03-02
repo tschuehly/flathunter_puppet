@@ -52,7 +52,11 @@ async function launch() {
             // let proxyWorks = await testProxy()
             // logger.info(proxyWorks ? 'Proxy is working' : 'Proxy is not working')
             // if (!proxyWorks) throw 'Could not connect to Proxy, exiting the programm'
-            const browser: Browser = await getBrowser();
+            let browser: Browser
+            for (let retries = 1; retries < 10; retries++) {
+                browser = await getBrowser();
+                if(browser){break}
+            }
             logger.info(browser ? 'Proxy is working' : 'Proxy is not working')
             if(!browser) throw 'Could not connect to Proxy, exiting the programm'
             await launchPuppeteer(browser)
@@ -69,24 +73,20 @@ async function launch() {
 async function getBrowser(): Promise<Browser> {
     return new Promise(async (resolve) => {
         let browser: Browser
-        for (let retries = 1; retries < 10; retries++) {
             try {
                 browser = await puppeteer.launch({
                     headless: config.HEADLESS_MODE,
                     args: ['--no-sandbox', proxyString],
                 })
                 let page =  await browser.newPage()
-                await page.goto("https://www.immobilienscout24.de/")
+                await page.goto("https://bitproxies.eu/api/v2/check")
                 logger.info("Browser works")
                 resolve(browser)
-                break
             } catch (e) {
                 await browser.close()
                 logger.error(e)
-
                 await sleep(10000)
             }
-        }
         resolve(null)
     })
 }
