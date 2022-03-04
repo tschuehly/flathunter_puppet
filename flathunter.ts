@@ -60,6 +60,7 @@ async function launch() {
             logger.info(browser ? 'Proxy is working' : 'Proxy is not working')
             if(!browser) throw 'Could not connect to Proxy, exiting the programm'
             await launchPuppeteer(browser)
+            await switchVpnCloseBrowser(browser)
         }
     } catch (e) {
         logger.error(e)
@@ -79,7 +80,7 @@ async function getBrowser(): Promise<Browser> {
                     args: ['--no-sandbox', proxyString],
                 })
                 let page =  await browser.newPage()
-                await page.goto("https://bitproxies.eu/api/v2/check")
+                await page.goto("https://api.ipify.org?format=json")
                 logger.info("Browser works")
                 resolve(browser)
             } catch (e) {
@@ -197,10 +198,11 @@ async function testWindscribe() {
 
 }
 
-
+let locations = ["fr","nl","de","ch","gb"]
+let locationCount = 0
 async function switchVpnCloseBrowser(browser: Browser) {
-    logger.info('Switching VPN Server');
-    await ssh.execCommand('windscribe connect de', {cwd: '/home/wss'})
+    logger.info('Switching VPN Server to '+ locations[locationCount]);
+    await ssh.execCommand('windscribe connect '+ locations[locationCount], {cwd: '/home/wss'})
         .then(function (result) {
             if (result.stdout.includes('DISCONNECTED')) {
                 logger.error("VPN Error")
@@ -208,6 +210,10 @@ async function switchVpnCloseBrowser(browser: Browser) {
                 logger.info('Windscribe reconnected and SSH is working');
             }
         });
+    locationCount += 1
+    if(locationCount == 5){
+        locationCount = 0
+    }
     logger.info('Closing Browser');
     await browser.close();
 }
@@ -249,8 +255,14 @@ async function launchPuppeteer(browser: Browser) {
     try {
         logger.info('Running ..');
         const page = await browser.newPage()
-        await page.setUserAgent(userAgent.toString())
+        await page.goto("https://api.ipify.org?format=json")
+        await page.content();
+        let ip = await page.evaluate(() =>  {
+            return document.querySelector("body").innerText
+        });
+        console.log(ip)
 
+        await page.setUserAgent(userAgent.toString())
         page.setDefaultTimeout(60000)
         let reconnect: number = Math.floor(Math.random() * Math.floor(6))
         do {
@@ -285,6 +297,7 @@ async function launchPuppeteer(browser: Browser) {
                             `${url ? url + "\n" : ""}`
                         logger.info(msg)
                         await bot.sendMessage(config.CHAT_ID, msg);
+                        await bot.sendMessage(config.CHAT_ID2, msg);
                     }
                 }
                 if (!newListing) {
@@ -296,11 +309,11 @@ async function launchPuppeteer(browser: Browser) {
             let timeout: number = (Math.floor(Math.random() * 10) + config.POLLING_RATE) * 1000;
             logger.info('Wait for ' + timeout + ' ms');
             await page.waitForTimeout(timeout)
-
-            if (count % REPEAT_BEFORE_VPN_RECONNECT[reconnect] == 0) {
-                await switchVpnCloseBrowser(browser)
-                return
-            }
+            return
+            // if (count % REPEAT_BEFORE_VPN_RECONNECT[reconnect] == 0) {
+            //     await switchVpnCloseBrowser(browser)
+                // return
+            // }
         } while (1)
 
     } catch (err) {

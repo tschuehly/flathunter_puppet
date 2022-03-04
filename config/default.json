@@ -1,20 +1,21 @@
 {
   "flathunter": {
     "TELEGRAM_TOKEN": "695605161:AAH3xZLT4u97ONTqQU2yk7ELv-kBK_grby4",
-    "CHAT_ID": 787255477,
+    "CHAT_ID": 1343787850,
+    "CHAT_ID2": 5274805477,
     "ERROR_CHAT_ID": 787255477,
     "WINDSCRIBE_USERNAME": "flathunter",
     "WINDSCRIBE_PW": "36jqU7w8AWejGcGyQKvYXxyU1cNpIB9QCSstR2XIPKiU5txSTwWnkYMQ",
     "SEARCH_URL_ARRAY": [
-      "https://www.immobilienscout24.de/Suche/shape/wohnung-kaufen?shape=c3BiZUhrd2hxQHBiaUBtZEVuZlJfZkJseVtrYG5CcH5Nd3l_QG9te0Jva3lBcXZ8QGN5b0BfZW1Ad3NpQGFlYUByYXtAYWdoQHxoeUJ_e1dudWFCYHtPcHNfQXBlcEB2X0NkfV9AfmVC&price=-120000.0&sorting=2","https://www.immobilienscout24.de/Suche/shape/haus-kaufen?shape=X3FrZkhzdn5fQWJgVGN3QmxiSHdtSXRjRm9uTXpVbW1qQHtkTnd0TGltTXVjQXdhSHl7RGVkRGVQfV9KdF9Oe2dOaGBdcW9HfmVCX3pSdWNBbWVIbH1BX3REYmxMfWBAamdVZG5BbH1BZmdJfGlAdGBBY2ZDYmpXdGdAbHlZaW9GO2FqdmxIdWhpYkF8fUFxdUVfYkFrdkl5eUI-c3BCdmpIYGtCfm9GO2F_fGxIc2FxYkFuQmdIb0J7Rg..&sorting=2"
+      "https://www.immobilienscout24.de/Suche/de/berlin/berlin/wohnung-mieten?numberofrooms=2.0-4.0&price=-900.0&exclusioncriteria=swapflat&pricetype=rentpermonth&geocodes=110000000801,110000000802,110000000703,110000000803,110000000704,110000000903,110000000805,110000000202,110000000701&enteredFrom=result_list&sorting=2"
     ],
     "HEADLESS_MODE": true,
-    "POLLING_RATE": 50,
+    "POLLING_RATE": 100,
     "proxy" : {
-      "ipAddress": "windscribe",//windscribe for docker localhost for dev
+      "ipAddress": "localhost",//windscribe for docker localhost for dev
       "port": 1080,
       "protocol": "socks5"
     }
   }
-  
+
 }

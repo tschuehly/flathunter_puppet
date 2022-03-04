@@ -1,3 +1,9 @@
+
+ping -c1 google.com
+if [ $? -eq 0 ]
+then
+  echo "Internet good"
+fi
 echo "Starting SSH Server"
 /etc/init.d/ssh restart
 echo "SSH Status"

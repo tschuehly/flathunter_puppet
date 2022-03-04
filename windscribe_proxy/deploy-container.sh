@@ -1,8 +1,8 @@
 #!/bin/bash
 # explicitly define variables here or source them from an .env file with --env-file flag
 #export WINDSCRIBE_DNS="1.1.1.1"
-export WINDSCRIBE_USERNAME=""
-export WINDSCRIBE_PASSWORD=""
+export WINDSCRIBE_USERNAME=flathunter
+export WINDSCRIBE_PASSWORD=q3oakBv2YljEpF40je022d
 #TODO: Import from secrets.env
 export WINDSCRIBE_LOCATION="de"
 
