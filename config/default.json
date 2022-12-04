@@ -1,11 +1,11 @@
 {
   "flathunter": {
-    "TELEGRAM_TOKEN": "695605161:AAH3xZLT4u97ONTqQU2yk7ELv-kBK_grby4",
+    "TELEGRAM_TOKEN": "",
     "CHAT_ID": 1343787850,
     "CHAT_ID2": 5274805477,
     "ERROR_CHAT_ID": 787255477,
     "WINDSCRIBE_USERNAME": "flathunter",
-    "WINDSCRIBE_PW": "36jqU7w8AWejGcGyQKvYXxyU1cNpIB9QCSstR2XIPKiU5txSTwWnkYMQ",
+    "WINDSCRIBE_PW": "",
     "SEARCH_URL_ARRAY": [
       "https://www.immobilienscout24.de/Suche/de/berlin/berlin/wohnung-mieten?numberofrooms=2.0-4.0&price=-900.0&exclusioncriteria=swapflat&pricetype=rentpermonth&geocodes=110000000801,110000000802,110000000703,110000000803,110000000704,110000000903,110000000805,110000000202,110000000701&enteredFrom=result_list&sorting=2"
     ],
